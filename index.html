@@ -25,6 +25,77 @@
     #legend { margin-top: 1rem; padding: 10px; border-radius: 5px; box-shadow: 0 0 5px rgba(0,0,0,0.1); background: #fff; }
     .footer { margin-top: 2rem; width: 100%; text-align: center; padding: 1rem; background: #e0e0e0; border-top: 2px solid #ccc; }
     #temp-results { white-space: pre-wrap; margin-top: 1rem; background: #f0f0f0; padding: 1rem; border-radius: 6px; box-shadow: 0 0 5px rgba(0,0,0,0.1); width: 100%; display: none; }
+
+    /* Styles for the new focal range visualization */
+    .container-wrapper {
+      background-color: #f3e8ff; /* violet clair */
+      border: 2px solid #a855f7; /* violet */
+      padding: 20px;
+      border-radius: 12px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .container {
+      position: relative;
+      width: 100%;
+      padding-bottom: 40px; /* Adjusted for better spacing */
+    }
+    .range-line {
+      position: relative;
+      height: 50px; /* Increased height for better visibility */
+      margin-bottom: 20px;
+    }
+    .range {
+      position: absolute;
+      height: 100%;
+      border: 1px solid #888;
+      box-sizing: border-box;
+      text-align: center;
+      font-size: 14px; /* Increased font size */
+      line-height: 50px; /* Match height */
+      color: white;
+      background: linear-gradient(to right, #eeddff, #a855f7);
+    }
+    .graduation {
+      position: relative;
+      height: 70px; /* Increased height for better visibility */
+      border-top: 2px solid #333;
+      margin-top: 20px;
+    }
+    .tick {
+      position: absolute;
+      top: -5px;
+      width: 1px;
+      height: 10px;
+      background: #333;
+    }
+    .tick-label {
+      position: absolute;
+      font-size: 12px; /* Increased font size */
+      transform: translateX(-50%);
+      top: 20px; /* Adjusted for better spacing */
+    }
+    #marker {
+      position: absolute;
+      top: -25px; /* Adjusted for better visibility */
+      width: 0;
+      height: 0;
+      border-left: 7px solid transparent;
+      border-right: 7px solid transparent;
+      border-bottom: 15px solid red;
+      display: none;
+    }
+    #marker-line {
+      position: absolute;
+      top: -35px; /* Adjusted for better visibility */
+      height: 2px;
+      background-color: red;
+      display: none;
+    }
+    #result {
+      margin-top: 20px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -103,6 +174,17 @@
           <p style="background:#4a148c;">8 projecteurs</p>
         </div>
       </div>
+    </div>
+
+    <!-- New Focal Range Visualization Section -->
+    <div class="container-wrapper">
+      <h2>Plages de focales</h2>
+      <div class="container" id="viz">
+        <div class="range-line" id="line0"></div>
+        <div class="range-line" id="line1"></div>
+        <div class="graduation" id="grad"></div>
+      </div>
+      <div id="result"></div>
     </div>
 
     <div class="footer">
@@ -189,14 +271,13 @@ function runSimulation(){
       const imgH = imgW * ratio;
       const rows = Math.ceil(BH / (imgH * (1 - ovY)));
       const tot  = cols * rows;
-      const pxW  = imgW * 1000 / resW;
-      const pxH  = imgH * 1000 / resH;
+      const pxSize = oMode === 'land' ? imgW / resW * 1000 : imgH / resH * 1000; // Taille du pixel en mm
       const luxA = lum * tot / (BW * BH);
       const tr   = D / imgW;
       const foc  = tr * SENSOR_W;
-      const cfg  = { cols, rows, tot, imgW, imgH, pxW, pxH, luxA, throw: tr, focale: foc };
+      const cfg  = { cols, rows, tot, imgW, imgH, pxSize, luxA, throw: tr, focale: foc };
       // priorise ceux qui passent les seuils
-      if (Math.max(pxW, pxH) <= maxPx) {
+      if (pxSize <= maxPx) {
         if (!best || cfg.tot < best.tot || (cfg.tot === best.tot && cfg.luxA > best.luxA)) {
           best = cfg;
         }
@@ -243,10 +324,10 @@ function runSimulation(){
   layout.multiplier = multiplier;
 
   // Calcul de l'espace pixélaire
-  const netWidth = layout.imgW * layout.cols * resW * (1 - ovX);
-  const netHeight = layout.imgH * layout.rows * resH * (1 - ovY);
-  const grossWidth = layout.imgW * layout.cols * resW;
-  const grossHeight = layout.imgH * layout.rows * resH;
+  const grossWidth = layout.cols * resW;
+  const grossHeight = layout.rows * resH;
+  const netWidth = BW * 1000 / layout.pxSize;
+  const netHeight = BH * 1000 / layout.pxSize;
 
   layout.netResolution = `${netWidth.toFixed(0)} x ${netHeight.toFixed(0)}`;
   layout.grossResolution = `${grossWidth.toFixed(0)} x ${grossHeight.toFixed(0)}`;
@@ -258,6 +339,7 @@ function runSimulation(){
   // affichage
   drawCanvas(false);
   showResults();
+  updateFocalVisualization(layout.throw);
 }
 
 function manualUpdate() {
@@ -286,23 +368,23 @@ function manualUpdate() {
   // calcul des résultats temporaires
   const imgW = BW / (1 + (manCols - 1) * (1 - ovX));
   const imgH = imgW * (oMode === 'land' ? aH/aW : aW/aH);
-  const pxW  = imgW * 1000 / resW;
-  const pxH  = imgH * 1000 / resH;
+  const pxSize = oMode === 'land' ? imgW / resW * 1000 : imgH / resH * 1000; // Taille du pixel en mm
   const luxA = lum * manCols * manRows / (BW * BH);
   const tr   = D / imgW;
   const foc  = tr * SENSOR_W;
 
   // Calcul de l'espace pixélaire temporaire
-  const netWidth = imgW * manCols * resW * (1 - ovX);
-  const netHeight = imgH * manRows * resH * (1 - ovY);
-  const grossWidth = imgW * manCols * resW;
-  const grossHeight = imgH * manRows * resH;
+  const grossWidth = manCols * resW;
+  const grossHeight = manRows * resH;
+  const netWidth = BW * 1000 / pxSize;
+  const netHeight = BH * 1000 / pxSize;
 
-  tempLayout = { cols: manCols, rows: manRows, imgW, imgH, pxW, pxH, luxA, throw: tr, focale: foc, orientation: oMode, netResolution: `${netWidth.toFixed(0)} x ${netHeight.toFixed(0)}`, grossResolution: `${grossWidth.toFixed(0)} x ${grossHeight.toFixed(0)}` };
+  tempLayout = { cols: manCols, rows: manRows, imgW, imgH, pxSize, luxA, throw: tr, focale: foc, orientation: oMode, netResolution: `${netWidth.toFixed(0)} x ${netHeight.toFixed(0)}`, grossResolution: `${grossWidth.toFixed(0)} x ${grossHeight.toFixed(0)}` };
 
   // affichage
   drawCanvas(true);
   showTempResults();
+  updateFocalVisualization(tempLayout.throw);
 }
 
 function drawCanvas(useManual) {
@@ -429,7 +511,7 @@ function showResults(){
 `Orientation    : ${R.orientation}
 Projecteurs    : ${R.cols} × ${R.rows} = ${R.tot}
 Image p/proj   : ${R.imgW.toFixed(2)} × ${R.imgH.toFixed(2)} m
-Pixel (mm)     : ${R.pxW.toFixed(2)} × ${R.pxH.toFixed(2)}
+Pixel (mm)     : ${R.pxSize.toFixed(2)}
 Throw ratio    : ${R.throw.toFixed(2)} :1
 Focale (mm)    : ${R.focale.toFixed(1)}
 Lux moyen      : ${R.luxA.toFixed(0)} lx
@@ -445,7 +527,7 @@ function showTempResults(){
 `Orientation    : ${R.orientation}
 Projecteurs    : ${R.cols} × ${R.rows}
 Image p/proj   : ${R.imgW.toFixed(2)} × ${R.imgH.toFixed(2)} m
-Pixel (mm)     : ${R.pxW.toFixed(2)} × ${R.pxH.toFixed(2)}
+Pixel (mm)     : ${R.pxSize.toFixed(2)}
 Throw ratio    : ${R.throw.toFixed(2)} :1
 Focale (mm)    : ${R.focale.toFixed(1)}
 Lux moyen      : ${R.luxA.toFixed(0)} lx
@@ -454,6 +536,86 @@ Espace pixélaire brut : ${R.grossResolution}`;
   document.getElementById('temp-results').style.display = 'block';
 }
 
+// Focal Range Visualization Script
+const rangesInput = [
+  { min: 0.35, max: 0.35, label: "0.35", minPct: 4.72, maxPct: 4.72 },
+  { min: 0.48, max: 0.57, label: "0.48–0.57", minPct: 6.48, maxPct: 7.69 },
+  { min: 0.64, max: 0.77, label: "0.64–0.77", minPct: 8.64, maxPct: 10.39 },
+  { min: 0.86, max: 1.21, label: "0.86–1.21", minPct: 11.61, maxPct: 16.33 },
+  { min: 1.19, max: 1.62, label: "1.19–1.62", minPct: 16.06, maxPct: 21.86 },
+  { min: 1.57, max: 2.56, label: "1.57–2.56", minPct: 21.18, maxPct: 34.55 },
+  { min: 2.42, max: 3.71, label: "2.42–3.71", minPct: 32.66, maxPct: 50.07 },
+  { min: 3.54, max: 5.41, label: "3.54–5.41", minPct: 47.78, maxPct: 73.01 },
+  { min: 5.27, max: 7.41, label: "5.27–7.41", minPct: 71.12, maxPct: 100 }
+];
+
+const line0 = document.getElementById('line0');
+const line1 = document.getElementById('line1');
+const grad  = document.getElementById('grad');
+const minF = 0.35;
+const maxF = 7.41;
+
+rangesInput.forEach((r, i) => {
+  const leftPct = ((r.min - minF) / (maxF - minF)) * 100;
+  const rightPct = ((r.max - minF) / (maxF - minF)) * 100;
+  const widthPct = rightPct - leftPct;
+  const div = document.createElement('div');
+  div.className = 'range';
+  div.style.left = `${leftPct}%`;
+  div.style.width = `${widthPct}%`;
+  div.textContent = r.label;
+
+  (i % 2 === 0 ? line0 : line1).appendChild(div);
+});
+
+const addedLabels = new Set();
+rangesInput.forEach(r => {
+  [r.min, r.max].forEach(val => {
+    const key = val.toFixed(2);
+    if (addedLabels.has(key)) return;
+    addedLabels.add(key);
+
+    const pct = ((val - minF) / (maxF - minF)) * 100;
+
+    const tick = document.createElement('div');
+    tick.className = 'tick';
+    tick.style.left = `${pct}%`;
+    grad.appendChild(tick);
+
+    const label = document.createElement('div');
+    label.className = 'tick-label';
+    label.style.left = `${pct}%`;
+    label.textContent = key;
+    grad.appendChild(label);
+  });
+});
+
+const marker = document.createElement('div');
+marker.id = 'marker';
+const markerLine = document.createElement('div');
+markerLine.id = 'marker-line';
+grad.appendChild(marker);
+grad.appendChild(markerLine);
+
+function updateFocalVisualization(throwRatio) {
+  const f = throwRatio;
+  if (isNaN(f) || f < minF || f > maxF) {
+    marker.style.display = 'none';
+    markerLine.style.display = 'none';
+    document.getElementById('result').textContent = "Aucune plage pour cette valeur.";
+    return;
+  }
+  const pct = ((f - minF) / (maxF - minF)) * 100;
+  marker.style.left = `${pct}%`;
+  marker.style.display = 'block';
+  markerLine.style.left = `${pct}%`;
+  markerLine.style.display = 'block';
+
+  const hit = rangesInput.filter(r => f >= r.min && f <= r.max).map(r => r.label);
+  document.getElementById('result').textContent = hit.length
+    ? `Valeur ${f.toFixed(2)} dans les plages : ${hit.join(', ')}`
+    : `Aucune plage pour ${f.toFixed(2)}`;
+}
 </script>
 
 </body>
