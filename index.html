@@ -5,9 +5,10 @@
   <title>Simulateur Projection Mapping</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f4; display: flex; flex-direction: column; align-items: center; }
-    .container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 1920px; }
-    .sections { display: flex; flex-direction: row; width: 100%; justify-content: space-around; margin-bottom: 2rem; }
-    .section { padding: 1rem; border-radius: 6px; box-shadow: 0 0 5px rgba(0,0,0,0.1); width: 22%; }
+    .main-wrapper { width: 100%; max-width: 100vw; margin: 0 auto; box-sizing: border-box; padding-left: 0.5vw; padding-right: 0.5vw; }
+    .container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 100%; box-sizing: border-box; }
+    .sections { display: flex; flex-direction: row; width: 100%; justify-content: space-around; margin-bottom: 2rem; gap: 1.5rem; flex-wrap: wrap; }
+    .section { padding: 1rem; border-radius: 6px; box-shadow: 0 0 5px rgba(0,0,0,0.1); width: 22%; min-width: 220px; box-sizing: border-box; margin-bottom: 1rem; }
     .section.building { background: #e0f7fa; }
     .section.projector { background: #e8f5e9; }
     .section.thresholds { background: #fff3e0; }
@@ -18,32 +19,58 @@
     label { display: block; margin: 0.5rem 0; }
     input, select, button { padding: 0.4rem; font-size: 1rem; }
     #feedback { margin-top: 1rem; padding: 0.5rem; border-radius: 4px; color: #800; background: #fee; display: none; }
-    #canvas-container { display: flex; flex-direction: row; align-items: center; width: 100%; }
-    #canvas-container canvas { background: #eee; border: 1px solid #ccc; }
-    #results-container { display: flex; flex-direction: column; align-items: flex-start; width: 33%; }
+    #canvas-container { display: flex; flex-direction: row; align-items: flex-start; width: 100%; gap: 2rem; flex-wrap: wrap; }
+    #canvas-container canvas { background: #eee; border: 1px solid #ccc; max-width: 100%; height: auto; }
+    #results-container { display: flex; flex-direction: column; align-items: flex-start; width: 33%; min-width: 260px; max-width: 400px; box-sizing: border-box; }
     #results { white-space: pre-wrap; margin-top: 1rem; background: #fff; padding: 1rem; border-radius: 6px; box-shadow: 0 0 5px rgba(0,0,0,0.1); width: 100%; }
     #legend { margin-top: 1rem; padding: 10px; border-radius: 5px; box-shadow: 0 0 5px rgba(0,0,0,0.1); background: #fff; }
     .footer { margin-top: 2rem; width: 100%; text-align: center; padding: 1rem; background: #e0e0e0; border-top: 2px solid #ccc; }
     #temp-results { white-space: pre-wrap; margin-top: 1rem; background: #f0f0f0; padding: 1rem; border-radius: 6px; box-shadow: 0 0 5px rgba(0,0,0,0.1); width: 100%; display: none; }
 
-    /* Styles for the new focal range visualization */
+    /* Styles pour la visualisation des focales */
+    :root {
+      --min-f: 0.35;
+      --max-f: 7.41;
+    }
     .container-wrapper {
       background-color: #f3e8ff; /* violet clair */
       border: 2px solid #a855f7; /* violet */
       padding: 20px;
       border-radius: 12px;
       width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      margin: 2rem auto 0 auto;
       box-sizing: border-box;
     }
+    .container-wrapper .container,
+    .container-wrapper .range-line,
+    .container-wrapper .graduation {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+    .container-wrapper h2 { margin-top: 0; }
     .container {
       position: relative;
       width: 100%;
-      padding-bottom: 40px; /* Adjusted for better spacing */
+      max-width: 900px;
+      min-width: 300px;
+      margin: auto;
+      padding-bottom: 80px;
+      box-sizing: border-box;
+    }
+    .range-line, .graduation {
+      width: 100%;
+      min-width: 300px;
+      max-width: 900px;
+      box-sizing: border-box;
     }
     .range-line {
       position: relative;
-      height: 50px; /* Increased height for better visibility */
-      margin-bottom: 20px;
+      height: 30px;
+      margin-bottom: 10px;
     }
     .range {
       position: absolute;
@@ -51,16 +78,16 @@
       border: 1px solid #888;
       box-sizing: border-box;
       text-align: center;
-      font-size: 14px; /* Increased font size */
-      line-height: 50px; /* Match height */
+      font-size: 12px;
+      line-height: 30px;
       color: white;
       background: linear-gradient(to right, #eeddff, #a855f7);
     }
     .graduation {
       position: relative;
-      height: 70px; /* Increased height for better visibility */
+      height: 50px;
       border-top: 2px solid #333;
-      margin-top: 20px;
+      margin-top: 30px;
     }
     .tick {
       position: absolute;
@@ -71,13 +98,13 @@
     }
     .tick-label {
       position: absolute;
-      font-size: 12px; /* Increased font size */
+      font-size: 11px;
       transform: translateX(-50%);
-      top: 20px; /* Adjusted for better spacing */
+      top: 12px;
     }
     #marker {
       position: absolute;
-      top: -25px; /* Adjusted for better visibility */
+      top: -15px;
       width: 0;
       height: 0;
       border-left: 7px solid transparent;
@@ -87,7 +114,7 @@
     }
     #marker-line {
       position: absolute;
-      top: -35px; /* Adjusted for better visibility */
+      top: -25px;
       height: 2px;
       background-color: red;
       display: none;
@@ -96,12 +123,103 @@
       margin-top: 20px;
       font-weight: bold;
     }
+
+    /* Responsive design */
+    @media (max-width: 900px) {
+      .main-wrapper { max-width: 100vw; }
+      .sections { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+      .section { width: 100%; min-width: 0; margin-bottom: 1rem; }
+      #canvas-container { flex-direction: column; gap: 1rem; }
+      #results-container { width: 100%; min-width: 0; max-width: 100%; }
+      .container-wrapper, .container, .range-line, .graduation { max-width: 100vw; min-width: 0; }
+    }
+    @media (max-width: 600px) {
+      .main-wrapper { padding: 0 2vw; }
+      .container-wrapper { padding: 10px; }
+      .container { padding-bottom: 40px; }
+      #canvas-container canvas { width: 100% !important; height: auto !important; }
+    }
+    @media (max-width: 700px) {
+      .main-wrapper { padding: 0 2vw; }
+      .container-wrapper { padding: 10px; }
+      .container { padding-bottom: 40px; }
+      .viz-canvas canvas { width: 100% !important; height: auto !important; }
+    }
+
+    /* Ajout des styles pour la nouvelle structure */
+    .input-row {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+      box-sizing: border-box;
+    }
+    .input-row .section {
+      flex: 1 1 0;
+      min-width: 220px;
+      max-width: 100%;
+      margin-bottom: 0;
+    }
+    .viz-row {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      gap: 2rem;
+      margin-bottom: 2rem;
+      box-sizing: border-box;
+    }
+    .viz-canvas {
+      flex: 2 1 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      box-sizing: border-box;
+    }
+    .viz-canvas button {
+      margin-bottom: 1rem;
+    }
+    .viz-canvas #feedback {
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+    .viz-canvas canvas {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      box-sizing: border-box;
+      background: #eee;
+      border: 1px solid #ccc;
+    }
+    .viz-results {
+      flex: 1 1 0;
+      min-width: 260px;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      box-sizing: border-box;
+    }
+    .viz-results #results,
+    .viz-results #temp-results,
+    .viz-results #legend {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    /* Responsive */
+    @media (max-width: 1100px) {
+      .input-row, .viz-row { flex-direction: column; gap: 1rem; }
+      .input-row .section, .viz-canvas, .viz-results { width: 100%; min-width: 0; max-width: 100%; }
+      .viz-row { gap: 1rem; }
+    }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <div class="sections">
+  <div class="main-wrapper">
+    <!-- Ligne 1 : 4 boîtes d'inputs -->
+    <div class="input-row">
       <div class="section building">
         <fieldset>
           <legend>Bâtiment</legend>
@@ -109,10 +227,15 @@
           <label>Hauteur (m): <input type="number" id="bldgH" step="0.01" value="15"></label>
         </fieldset>
       </div>
-
       <div class="section projector">
         <fieldset>
           <legend>Projecteur & Orientation</legend>
+          <label>Profil projecteur :
+            <select id="projectorProfile" onchange="onProjectorChange()">
+              <option value="ebpu2220b">Epson EB-PU2220B</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
           <label>Aspect ratio :
             <select id="aspect">
               <option value="16/9">16:9</option>
@@ -131,7 +254,6 @@
           </fieldset>
         </fieldset>
       </div>
-
       <div class="section thresholds">
         <fieldset>
           <legend>Projection & Seuils</legend>
@@ -140,43 +262,92 @@
           <label>Pixel max (mm) : <input type="number" id="maxPixel" step="0.1" value="20"></label>
           <label>Overlap horiz. (%) : <input type="number" id="ovx" step="1" value="10"></label>
           <label>Overlap vert. (%)  : <input type="number" id="ovy" step="1" value="10"></label>
+          <button id="btn-auto" onclick="runSimulation()">Calcul automatique</button>
         </fieldset>
       </div>
-
       <div class="section manual">
         <fieldset>
           <legend>Réglage manuel</legend>
           <label>Colonnes : <input type="number" id="manCols" min="1"></label>
           <label>Rangées  : <input type="number" id="manRows" min="1"></label>
-          <button onclick="manualUpdate()">Mettre à jour le rendu</button>
+          <label>Pixel max (mm) : <input type="number" id="manMaxPixel" step="0.1" value="20"></label>
+          <label>Stack :
+            <select id="manStack">
+              <option value="1">Single</option>
+              <option value="2">Dual</option>
+              <option value="3">Trial</option>
+              <option value="4">Quadral</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+            </select>
+          </label>
+          <label>Overlap horiz. (%) : <input type="number" id="manOvX" step="1" value="10"></label>
+          <label>Overlap vert. (%)  : <input type="number" id="manOvY" step="1" value="10"></label>
+          <button id="btn-manual" onclick="manualUpdate()">Calcul manuel</button>
+          <div id="manual-extra">
+            <div>Lux : <span id="manual-lux">-</span></div>
+          </div>
         </fieldset>
       </div>
     </div>
-
-    <button onclick="runSimulation()">Calculer & Afficher</button>
-
-    <div id="feedback"></div>
-
-    <div id="canvas-container">
-      <canvas id="cv" width="1280" height="720"></canvas>
-      <div id="results-container">
-        <div id="results"></div>
-        <div id="temp-results"></div>
-        <div id="legend">
-          <p>Légende :</p>
-          <p style="background:#9cffac;">1 projecteur</p>
-          <p style="background:#00ff00;">2 projecteurs (Dual)</p>
-          <p style="background:#00b200;">3 projecteurs (Trial)</p>
-          <p style="background:#006b00;">4 projecteurs (Quadral)</p>
-          <p style="background:#d8bfd8;">5 projecteurs</p>
-          <p style="background:#ba68c8;">6 projecteurs</p>
-          <p style="background:#9c27b0;">7 projecteurs</p>
-          <p style="background:#4a148c;">8 projecteurs</p>
+    <!-- Ligne 2 : Visualisation + Résultats -->
+    <div class="viz-row" style="flex-direction: column; gap: 2rem;">
+      <div style="display: flex; flex-direction: row; width: 100%; gap: 2rem;">
+        <div class="viz-canvas" style="flex:2;">
+          <div style="font-weight:bold; margin-bottom:0.5rem;">Simulation automatique</div>
+          <div id="feedback"></div>
+          <canvas id="cv-auto" width="1280" height="360"></canvas>
+        </div>
+        <div class="viz-results" style="flex:1;">
+          <div id="results-auto"></div>
+          <div id="public-distance-bar-auto" style="margin-top:1.5em; display:none;">
+            <div style="width:100%;height:18px;position:relative;">
+              <canvas id="bar-pixel-public-auto" width="320" height="18" style="width:100%;max-width:320px;display:block;"></canvas>
+              <div id="bar-pixel-cursor-auto" style="position:absolute;top:0;left:0;width:0;height:0;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:2px;">
+              <span>0 m</span><span id="bar-pixel-max-label-auto">50 m</span>
+            </div>
+            <div id="bar-pixel-text-auto" style="font-size:13px;margin-top:4px;"></div>
+          </div>
+        </div>
+      </div>
+      <div style="height:2px; background:#bbb; margin:1rem 0;"></div>
+      <div style="display: flex; flex-direction: row; width: 100%; gap: 2rem;">
+        <div class="viz-canvas" style="flex:2;">
+          <div style="font-weight:bold; margin-bottom:0.5rem;">Simulation manuelle</div>
+          <canvas id="cv-manual" width="1280" height="360"></canvas>
+        </div>
+        <div class="viz-results" style="flex:1;">
+          <div id="results-manual"></div>
+          <div id="public-distance-bar" style="margin-top:1.5em; display:none;">
+            <div style="width:100%;height:18px;position:relative;">
+              <canvas id="bar-pixel-public" width="320" height="18" style="width:100%;max-width:320px;display:block;"></canvas>
+              <div id="bar-pixel-cursor" style="position:absolute;top:0;left:0;width:0;height:0;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:2px;">
+              <span>0 m</span><span id="bar-pixel-max-label">50 m</span>
+            </div>
+            <div id="bar-pixel-text" style="font-size:13px;margin-top:4px;"></div>
+          </div>
         </div>
       </div>
     </div>
-
-    <!-- New Focal Range Visualization Section -->
+    <!-- Légende déplacée en bas -->
+    <div id="legend" style="margin-top:2rem;">
+      <p>Légende :</p>
+      <p style="background:#9cffac;">1 projecteur</p>
+      <p style="background:#00ff00;">2 projecteurs (Dual)</p>
+      <p style="background:#00b200;">3 projecteurs (Trial)</p>
+      <p style="background:#006b00;">4 projecteurs (Quadral)</p>
+      <p style="background:#d8bfd8;">5 projecteurs</p>
+      <p style="background:#ba68c8;">6 projecteurs</p>
+      <p style="background:#9c27b0;">7 projecteurs</p>
+      <p style="background:#4a148c;">8 projecteurs</p>
+    </div>
+    <!-- Ligne 3 : Droite de sélection des focales -->
     <div class="container-wrapper">
       <h2>Plages de focales</h2>
       <div class="container" id="viz">
@@ -185,8 +356,12 @@
         <div class="graduation" id="grad"></div>
       </div>
       <div id="result"></div>
+      <div id="focal-legend" style="margin-top:8px;font-size:13px;">
+        <span style="color:gold;font-weight:bold;">▲</span> Curseur jaune : focale automatique &nbsp; &nbsp;
+        <span style="color:red;font-weight:bold;">▲</span> Curseur rouge : focale manuelle
+      </div>
     </div>
-
+    <!-- Ligne 4 : Zone de développement 3D -->
     <div class="footer">
       <p>Zone de développement pour la représentation 3D de la simulation</p>
     </div>
@@ -206,6 +381,44 @@ let tempLayout = null;
 document.querySelectorAll('input[name="orientMode"]').forEach(el=>
   el.addEventListener('change', runSimulation)
 );
+
+// === Début ajout : profils de projecteurs ===
+const PROJECTORS = [
+  {
+    id: 'ebpu2220b',
+    name: 'Epson EB-PU2220B',
+    brightness: 20000,
+    contrast: 'Over 5,000,000:1',
+    resolution: { w: 1920, h: 1200 },
+    aspect: '16/10',
+    lightSource: 'Laser',
+    weight: '24.4 kg',
+    size: '586 x 218 x 492 mm',
+    voltage: '200 - 240 V AC +/- 10%, 50/60 Hz',
+    power_100v: '810W (Normal)',
+    power_200v: '1301W (Normal) / 899W (Eco)',
+    decibel: '45dB',
+    main: true
+  },
+  {
+    id: 'custom',
+    name: 'Custom',
+    brightness: null,
+    contrast: null,
+    resolution: { w: null, h: null },
+    aspect: null,
+    lightSource: null,
+    weight: null,
+    size: null,
+    voltage: null,
+    power_100v: null,
+    power_200v: null,
+    decibel: null,
+    main: false
+  }
+];
+let selectedProjector = PROJECTORS[0];
+// === Fin ajout : profils de projecteurs ===
 
 function showFeedback(msg) {
   const fb = document.getElementById('feedback');
@@ -232,12 +445,32 @@ function validateInputs() {
   if (!resH || resH <= 0) return "Résolution hauteur invalide.";
   if (!lum || lum <= 0)   return "Lumens invalide.";
   if (!D || D <= 0)       return "Distance de projection invalide.";
-  if (minL < 0)           return "Lux minimum doit être ≥ 0.";
-  if (maxP <= 0)          return "Pixel max doit être > 0.";
+  if (minL < 0)           return "Lux minimum doit être ≥ 0.";
+  if (maxP <= 0)          return "Pixel max doit être > 0.";
   if (ovX < 0 || ovX >= 100) return "Overlap horizontal entre 0 et <100%.";
   if (ovY < 0 || ovY >= 100) return "Overlap vertical entre 0 et <100%.";
   return null;
 }
+
+// === Début ajout : base de données des optiques ===
+const OPTICS = [
+  { name: "LPLX02 (UST)", code: "V12H004X02", min: 0.35, max: 0.35, vshift: "45% --- 70%", hshift: "-15% --- 15%", lumens: 16900 },
+  { name: "ELPLX02S (UST)", code: "V12H004X0B", min: 0.35, max: 0.35, vshift: "45% --- 70%", hshift: "-15% --- 15%", lumens: 16900 },
+  { name: "ELPLU03S (Short)", code: "V12H004UA3", min: 0.48, max: 0.57, vshift: "-24% --- 24%", hshift: "-8% --- 8%", lumens: 17400 },
+  { name: "ELPLU04 (Short)", code: "V12H004U04", min: 0.64, max: 0.77, vshift: "-60% --- 60%", hshift: "-18% --- 18%", lumens: 19000 },
+  { name: "ELPLW08 (Short)", code: "V12H004W08", min: 0.86, max: 1.21, vshift: "-60% --- 60%", hshift: "-18% --- 18%", lumens: 19100 },
+  { name: "ELPLW06 (Short)", code: "V12H004W06", min: 1.19, max: 1.62, vshift: "-60% --- 60%", hshift: "-18% --- 18%", lumens: 19200 },
+  { name: "ELPLM15 (Middle)", code: "V12H004M0F", min: 1.57, max: 2.56, vshift: "-60% --- 60%", hshift: "-18% --- 18%", lumens: 20000 },
+  { name: "ELPLM10 (Middle)", code: "V12H004M0A", min: 2.42, max: 3.71, vshift: "-60% --- 60%", hshift: "-18% --- 18%", lumens: 19900 },
+  { name: "ELPLM11 (Middle)", code: "V12H004M0B", min: 3.54, max: 5.41, vshift: "-60% --- 60%", hshift: "-18% --- 18%", lumens: 19000 },
+  { name: "ELPLL08 (Long)", code: "V12H004L08", min: 5.27, max: 7.41, vshift: "-60% --- 60%", hshift: "-18% --- 18%", lumens: 19000 },
+];
+
+function getOpticForThrow(throwRatio) {
+  // Cherche l'optique dont la plage inclut le throw ratio
+  return OPTICS.find(opt => throwRatio >= opt.min && throwRatio <= opt.max) || null;
+}
+// === Fin ajout : base de données des optiques ===
 
 function runSimulation(){
   showFeedback("");
@@ -323,32 +556,63 @@ function runSimulation(){
   }
   layout.multiplier = multiplier;
 
-  // Calcul de l'espace pixélaire
-  const grossWidth = layout.cols * resW;
-  const grossHeight = layout.rows * resH;
-  const netWidth = BW * 1000 / layout.pxSize;
-  const netHeight = BH * 1000 / layout.pxSize;
+  // === Calculs avancés de la résolution brute et nette de l'espace pixélaire ===
+  let bruteW, bruteH, netW, netH;
+  // Largeur/hauteur du bâtiment (en m)
+  const batW = BW;
+  const batH = BH;
+  // Largeur/hauteur de la mosaïque projetée (en m)
+  let mosaicW, mosaicH;
+  if (layout.orientation === 'Paysage') {
+    bruteW = Math.round(resW + (layout.cols - 1) * resW * (1 - ovX));
+    bruteH = Math.round(resH + (layout.rows - 1) * resH * (1 - ovY));
+    mosaicW = layout.imgW + (layout.cols - 1) * layout.imgW * (1 - ovX);
+    mosaicH = layout.imgH + (layout.rows - 1) * layout.imgH * (1 - ovY);
+  } else {
+    bruteW = Math.round(resH + (layout.cols - 1) * resH * (1 - ovX));
+    bruteH = Math.round(resW + (layout.rows - 1) * resW * (1 - ovY));
+    mosaicW = layout.imgW + (layout.cols - 1) * layout.imgW * (1 - ovX);
+    mosaicH = layout.imgH + (layout.rows - 1) * layout.imgH * (1 - ovY);
+  }
+  // Taille d'un pixel projeté (en m)
+  const pxW = mosaicW / bruteW;
+  const pxH = mosaicH / bruteH;
+  // Nombre de pixels utiles (qui rentrent dans le bâtiment)
+  netW = Math.min(bruteW, Math.floor(batW / pxW));
+  netH = Math.min(bruteH, Math.floor(batH / pxH));
+  layout.grossResolution = `${bruteW} x ${bruteH}`;
+  layout.netResolution = `${netW} x ${netH}`;
 
-  layout.netResolution = `${netWidth.toFixed(0)} x ${netHeight.toFixed(0)}`;
-  layout.grossResolution = `${grossWidth.toFixed(0)} x ${grossHeight.toFixed(0)}`;
+  // === Début ajout : association optique et calcul lux réels ===
+  layout.optic = getOpticForThrow(layout.throw);
+  layout.luxMaxTheorique = lum * layout.tot * layout.multiplier / (BW * BH);
+  if (layout.optic) {
+    layout.luxReel = layout.optic.lumens * layout.tot * layout.multiplier / (BW * BH);
+  } else {
+    layout.luxReel = layout.luxMaxTheorique;
+  }
+  // === Fin ajout ===
+
+  // === Début ajout : stockage du projecteur utilisé dans le layout ===
+  layout.projector = selectedProjector;
+  // === Fin ajout ===
 
   // mise à jour champs manuels
   document.getElementById('manCols').value = layout.cols;
   document.getElementById('manRows').value = layout.rows;
 
   // affichage
-  drawCanvas(false);
-  showResults();
-  updateFocalVisualization(layout.throw);
+  drawCanvas('cv-auto', false);
+  showResults('results-auto');
+  updateFocalVisualization(layout.throw, false);
 }
 
 function manualUpdate() {
   if (!layout) {
-    showFeedback("⚠️ Lancez d'abord « Calculer & Afficher » avant le réglage manuel.");
+    showFeedback("⚠️ Lancez d'abord « Calculer & Afficher » avant le réglage manuel.");
     return;
   }
   showFeedback("");
-
   // lecture des paramètres manuels
   const BW    = +document.getElementById('bldgW').value;
   const BH    = +document.getElementById('bldgH').value;
@@ -358,37 +622,109 @@ function manualUpdate() {
   const lum   = +document.getElementById('lumens').value;
   const D     = +document.getElementById('dist').value;
   const minLux= +document.getElementById('minLux').value;
-  const maxPx = +document.getElementById('maxPixel').value;
-  const ovX   = +document.getElementById('ovx').value/100;
-  const ovY   = +document.getElementById('ovy').value/100;
+  const maxPx = +document.getElementById('manMaxPixel').value; // pixel max manuel
+  const ovX   = +document.getElementById('manOvX').value/100;
+  const ovY   = +document.getElementById('manOvY').value/100;
   const oMode = document.querySelector('input[name="orientMode"]:checked').value;
   const manCols = +document.getElementById('manCols').value;
   const manRows = +document.getElementById('manRows').value;
-
+  const manStack = +document.getElementById('manStack').value;
   // calcul des résultats temporaires
   const imgW = BW / (1 + (manCols - 1) * (1 - ovX));
   const imgH = imgW * (oMode === 'land' ? aH/aW : aW/aH);
   const pxSize = oMode === 'land' ? imgW / resW * 1000 : imgH / resH * 1000; // Taille du pixel en mm
-  const luxA = lum * manCols * manRows / (BW * BH);
+  const luxA = lum * manCols * manRows * manStack / (BW * BH);
   const tr   = D / imgW;
   const foc  = tr * SENSOR_W;
-
-  // Calcul de l'espace pixélaire temporaire
-  const grossWidth = manCols * resW;
-  const grossHeight = manRows * resH;
-  const netWidth = BW * 1000 / pxSize;
-  const netHeight = BH * 1000 / pxSize;
-
-  tempLayout = { cols: manCols, rows: manRows, imgW, imgH, pxSize, luxA, throw: tr, focale: foc, orientation: oMode, netResolution: `${netWidth.toFixed(0)} x ${netHeight.toFixed(0)}`, grossResolution: `${grossWidth.toFixed(0)} x ${grossHeight.toFixed(0)}` };
-
+  // === Calculs avancés de la résolution brute et nette de l'espace pixélaire (manuel) ===
+  let bruteW, bruteH, netW, netH;
+  // Largeur/hauteur du bâtiment (en m)
+  const batW = BW;
+  const batH = BH;
+  // Largeur/hauteur de la mosaïque projetée (en m)
+  let mosaicW, mosaicH;
+  if (oMode === 'land') {
+    bruteW = Math.round(resW + (manCols - 1) * resW * (1 - ovX));
+    bruteH = Math.round(resH + (manRows - 1) * resH * (1 - ovY));
+    mosaicW = imgW + (manCols - 1) * imgW * (1 - ovX);
+    mosaicH = imgH + (manRows - 1) * imgH * (1 - ovY);
+  } else {
+    bruteW = Math.round(resH + (manCols - 1) * resH * (1 - ovX));
+    bruteH = Math.round(resW + (manRows - 1) * resW * (1 - ovY));
+    mosaicW = imgW + (manCols - 1) * imgW * (1 - ovX);
+    mosaicH = imgH + (manRows - 1) * imgH * (1 - ovY);
+  }
+  // Taille d'un pixel projeté (en m)
+  const pxW = mosaicW / bruteW;
+  const pxH = mosaicH / bruteH;
+  // Nombre de pixels utiles (qui rentrent dans le bâtiment)
+  netW = Math.min(bruteW, Math.floor(batW / pxW));
+  netH = Math.min(bruteH, Math.floor(batH / pxH));
+  tempLayout = { cols: manCols, rows: manRows, imgW, imgH, pxSize, luxA, throw: tr, focale: foc, orientation: oMode, netResolution: `${netW} x ${netH}`, grossResolution: `${bruteW} x ${bruteH}` };
+  // === Début ajout : association optique et calcul lux réels (manuel) ===
+  tempLayout.optic = getOpticForThrow(tempLayout.throw);
+  tempLayout.luxMaxTheorique = lum * manCols * manRows * manStack / (BW * BH);
+  if (tempLayout.optic) {
+    tempLayout.luxReel = tempLayout.optic.lumens * manCols * manRows * manStack / (BW * BH);
+  } else {
+    tempLayout.luxReel = tempLayout.luxMaxTheorique;
+  }
+  // === Fin ajout ===
+  // === Début ajout : stockage du projecteur utilisé dans le layout temporaire ===
+  tempLayout.projector = selectedProjector;
+  // === Fin ajout ===
   // affichage
-  drawCanvas(true);
-  showTempResults();
-  updateFocalVisualization(tempLayout.throw);
+  drawCanvas('cv-manual', true);
+  showTempResults('results-manual', manStack);
+  updateFocalVisualization(tempLayout.throw, true);
+  // Affichage stack/lux dans la zone manuelle
+  let stackLabel = 'Single';
+  if (manStack === 2) stackLabel = 'Dual';
+  else if (manStack === 3) stackLabel = 'Trial';
+  else if (manStack === 4) stackLabel = 'Quadral';
+  else if (manStack > 4) stackLabel = manStack;
+  document.getElementById('manual-lux').textContent = tempLayout.luxA.toFixed(0) + ' lx';
+
+  // Affichage de la barre de distance public (manuel)
+  const pxSize2 = tempLayout.pxSize;
+  const distMin2 = calcDistanceForPPD(pxSize2, 30, 40);
+  let maxDist2 = Math.max(20, Math.min(200, distMin2 * 3));
+  const bar2 = document.getElementById('public-distance-bar');
+  const barCanvas2 = document.getElementById('bar-pixel-public');
+  const barCursor2 = document.getElementById('bar-pixel-cursor');
+  const barText2 = document.getElementById('bar-pixel-text');
+  const barMaxLabel2 = document.getElementById('bar-pixel-max-label');
+  if (bar2 && barCanvas2 && barCursor2 && barText2 && barMaxLabel2) {
+    bar2.style.display = '';
+    // Gradient rouge→vert
+    const ctx2 = barCanvas2.getContext('2d');
+    const grad2 = ctx2.createLinearGradient(0,0,barCanvas2.width,0);
+    grad2.addColorStop(0, '#e53935');
+    grad2.addColorStop(0.5, '#ffeb3b');
+    grad2.addColorStop(1, '#43a047');
+    ctx2.clearRect(0,0,barCanvas2.width,barCanvas2.height);
+    ctx2.fillStyle = grad2;
+    ctx2.fillRect(0,0,barCanvas2.width,barCanvas2.height);
+    // Curseur noir
+    let pct2 = Math.max(0, Math.min(1, distMin2 / maxDist2));
+    const x2 = pct2 * barCanvas2.width;
+    barCursor2.style.left = (x2-7) + 'px';
+    barCursor2.style.top = '0px';
+    barCursor2.style.width = '0';
+    barCursor2.style.height = '0';
+    barCursor2.style.borderLeft = '7px solid transparent';
+    barCursor2.style.borderRight = '7px solid transparent';
+    barCursor2.style.borderBottom = '15px solid #111';
+    barCursor2.style.position = 'absolute';
+    barCursor2.style.display = 'block';
+    // Texte
+    barText2.textContent = `Distance optimale pour une image nette (≥30 PPD sur 40°) : ${distMin2.toFixed(2)} m`;
+    barMaxLabel2.textContent = maxDist2.toFixed(0) + ' m';
+  }
 }
 
-function drawCanvas(useManual) {
-  const cv = document.getElementById('cv');
+function drawCanvas(canvasId, useManual) {
+  const cv = document.getElementById(canvasId);
   const ctx = cv.getContext('2d');
   ctx.clearRect(0, 0, cv.width, cv.height);
 
@@ -404,14 +740,6 @@ function drawCanvas(useManual) {
   ctx.fillStyle = 'rgba(255, 165, 0, 0.2)'; ctx.fillRect(bx, by, BWpx, BHpx);
   ctx.lineWidth = 4; ctx.strokeStyle = 'orange';
   ctx.strokeRect(bx, by, BWpx, BHpx);
-  // dimensions texte
-  ctx.fillStyle = '#000'; ctx.font = '16px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-  ctx.fillText(`${BW.toFixed(2)} m`, bx + BWpx/2, by - 8);
-  ctx.save();
-    ctx.translate(bx - 8, by + BHpx/2);
-    ctx.rotate(-Math.PI/2);
-    ctx.fillText(`${BH.toFixed(2)} m`, 0, 0);
-  ctx.restore();
 
   // layout à dessiner
   const cols = useManual
@@ -420,8 +748,13 @@ function drawCanvas(useManual) {
   const rows = useManual
     ? +document.getElementById('manRows').value
     : layout.rows;
-  const ovX = +document.getElementById('ovx').value / 100;
-  const ovY = +document.getElementById('ovy').value / 100;
+  // Overlap manuel ou auto
+  const ovX = useManual
+    ? +document.getElementById('manOvX').value / 100
+    : +document.getElementById('ovx').value / 100;
+  const ovY = useManual
+    ? +document.getElementById('manOvY').value / 100
+    : +document.getElementById('ovy').value / 100;
   // choisir ratio selon orientation
   const [aW,aH] = document.getElementById('aspect').value.split('/').map(Number);
   const ratio = layout.orientation === 'Paysage' ? aH/aW : aW/aH;
@@ -436,6 +769,22 @@ function drawCanvas(useManual) {
   const startX = bx - (covWpx - BWpx) / 2;
   const startY = by - (covHpx - BHpx) / 2;
 
+  // couleur selon stack (manuel ou auto)
+  let stack = 1;
+  if (useManual) {
+    stack = +document.getElementById('manStack').value;
+  } else if (layout && layout.multiplier) {
+    stack = layout.multiplier;
+  }
+  let color = '#9cffac';
+  if (stack === 2) color = '#00ff00';
+  else if (stack === 3) color = '#00b200';
+  else if (stack === 4) color = '#006b00';
+  else if (stack === 5) color = '#d8bfd8';
+  else if (stack === 6) color = '#ba68c8';
+  else if (stack === 7) color = '#9c27b0';
+  else if (stack === 8) color = '#4a148c';
+
   // dessine projecteurs
   let idx = 0, total = cols * rows;
   const rects = [];
@@ -444,16 +793,7 @@ function drawCanvas(useManual) {
       const x = startX + c * (imgWpx * (1 - ovX));
       const y = startY + r * (imgHpx * (1 - ovY));
       rects.push({x,y,w:imgWpx,h:imgHpx});
-      // zone verte
-      const multiplier = useManual ? 1 : layout.multiplier;
-      const color = multiplier === 1 ? '#9cffac' :
-                    multiplier === 2 ? '#00ff00' :
-                    multiplier === 3 ? '#00b200' :
-                    multiplier === 4 ? '#006b00' :
-                    multiplier === 5 ? '#d8bfd8' :
-                    multiplier === 6 ? '#ba68c8' :
-                    multiplier === 7 ? '#9c27b0' :
-                    '#4a148c';
+      // zone verte (ou autre couleur selon stack)
       ctx.fillStyle = color;
       ctx.fillRect(x,y,imgWpx,imgHpx);
       // grille blanche
@@ -502,38 +842,158 @@ function drawCanvas(useManual) {
     if (r.y<by)          ctx.fillRect(r.x, r.y, r.w, by-r.y);
     if (r.y+r.h>by+BHpx) ctx.fillRect(r.x, by+BHpx, r.w, r.y+r.h-(by+BHpx));
   });
+
+  // Affichage de la largeur du bâtiment (toujours au-dessus)
+  ctx.save();
+  ctx.fillStyle = '#000'; ctx.font = '16px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText(`${BW.toFixed(2)} m`, bx + BWpx/2, by - 8);
+  ctx.restore();
+
+  // Affichage de la hauteur du bâtiment (vertical, toujours au-dessus)
+  ctx.save();
+  ctx.translate(bx - 8, by + BHpx/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillStyle = '#000';
+  ctx.font = '16px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(`${BH.toFixed(2)} m`, 0, 0);
+  ctx.restore();
 }
 
-function showResults(){
+function formatThrowRatio(tr) {
+  return Math.floor(tr * 100) / 100;
+}
+
+function showResults(resultId){
   if (!layout) return;
   const R = layout;
-  document.getElementById('results').textContent =
-`Orientation    : ${R.orientation}
-Projecteurs    : ${R.cols} × ${R.rows} = ${R.tot}
-Image p/proj   : ${R.imgW.toFixed(2)} × ${R.imgH.toFixed(2)} m
-Pixel (mm)     : ${R.pxSize.toFixed(2)}
-Throw ratio    : ${R.throw.toFixed(2)} :1
-Focale (mm)    : ${R.focale.toFixed(1)}
-Lux moyen      : ${R.luxA.toFixed(0)} lx
-Multiplicateur: ${R.multiplier}
-Espace pixélaire net : ${R.netResolution}
-Espace pixélaire brut : ${R.grossResolution}`;
+  let opticInfo = R.optic ?
+    `<div>Optique utilisée : ${R.optic.name} (${R.optic.code})</div><div>Throw ratio plage : ${R.optic.min}–${R.optic.max}</div><div>Lens shift V : ${R.optic.vshift}</div><div>Lens shift H : ${R.optic.hshift}</div><div>Lumens après réduction : ${R.optic.lumens} lm</div>` :
+    `<div>Aucune optique trouvée pour ce throw ratio.</div>`;
+  let projInfo = R.projector ?
+    `<div>Projecteur : ${R.projector.name}</div><div>Lumens natif : ${R.projector.brightness ? R.projector.brightness + ' lm' : '—'}</div><div>Résolution : ${R.projector.resolution.w && R.projector.resolution.h ? R.projector.resolution.w + ' x ' + R.projector.resolution.h : '—'}</div><div>Ratio : ${R.projector.aspect || '—'}</div>` :
+    '';
+  document.getElementById(resultId).innerHTML =
+    projInfo +
+    `<div>Orientation : ${R.orientation}</div>`+
+    `<div>Projecteurs : ${R.cols} × ${R.rows} = ${R.tot}</div>`+
+    `<div>Image p/proj : ${R.imgW.toFixed(2)} × ${R.imgH.toFixed(2)} m</div>`+
+    `<div>Pixel (mm) : ${R.pxSize.toFixed(2)}</div>`+
+    `<div>Throw ratio : ${getSingleThrowRatio().toFixed(2)} :1</div>`+
+    `<div>Lux max théorique : ${R.luxMaxTheorique.toFixed(0)} lx</div>`+
+    `<div>Lux réel (optique) : ${R.luxReel.toFixed(0)} lx</div>`+
+    `<div>Multiplicateur : ${R.multiplier}</div>`+
+    `<div>Espace pixélaire net : ${R.netResolution}</div>`+
+    `<div>Espace pixélaire brut : ${R.grossResolution}</div>`+
+    opticInfo;
+  document.getElementById(resultId).style.display = 'block';
+
+  // Affichage de la barre de distance public (auto)
+  const pxSize = R.pxSize;
+  // Distance optimale pour 30 PPD sur 40°
+  const distMin = calcDistanceForPPD(pxSize, 30, 40);
+  // Distance maximale dynamique : 3x la distance optimale, min 20m, max 200m
+  let maxDist = Math.max(20, Math.min(200, distMin * 3));
+  const bar = document.getElementById('public-distance-bar-auto');
+  const barCanvas = document.getElementById('bar-pixel-public-auto');
+  const barCursor = document.getElementById('bar-pixel-cursor-auto');
+  const barText = document.getElementById('bar-pixel-text-auto');
+  const barMaxLabel = document.getElementById('bar-pixel-max-label-auto');
+  if (bar && barCanvas && barCursor && barText && barMaxLabel) {
+    bar.style.display = '';
+    // Gradient rouge→vert
+    const ctx = barCanvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0,0,barCanvas.width,0);
+    grad.addColorStop(0, '#e53935');
+    grad.addColorStop(0.5, '#ffeb3b');
+    grad.addColorStop(1, '#43a047');
+    ctx.clearRect(0,0,barCanvas.width,barCanvas.height);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,barCanvas.width,barCanvas.height);
+    // Curseur
+    let pct = Math.max(0, Math.min(1, distMin / maxDist));
+    const x = pct * barCanvas.width;
+    barCursor.style.left = (x-7) + 'px';
+    barCursor.style.top = '0px';
+    barCursor.style.width = '0';
+    barCursor.style.height = '0';
+    barCursor.style.borderLeft = '7px solid transparent';
+    barCursor.style.borderRight = '7px solid transparent';
+    barCursor.style.borderBottom = '15px solid #111';
+    barCursor.style.position = 'absolute';
+    barCursor.style.display = 'block';
+    // Texte
+    barText.textContent = `Distance minimale recommandée pour ne pas distinguer les pixels : ${distMin.toFixed(2)} m`;
+    barMaxLabel.textContent = maxDist.toFixed(0) + ' m';
+  }
 }
 
-function showTempResults(){
+function showTempResults(resultId, manStack){
   if (!tempLayout) return;
   const R = tempLayout;
-  document.getElementById('temp-results').textContent =
-`Orientation    : ${R.orientation}
-Projecteurs    : ${R.cols} × ${R.rows}
-Image p/proj   : ${R.imgW.toFixed(2)} × ${R.imgH.toFixed(2)} m
-Pixel (mm)     : ${R.pxSize.toFixed(2)}
-Throw ratio    : ${R.throw.toFixed(2)} :1
-Focale (mm)    : ${R.focale.toFixed(1)}
-Lux moyen      : ${R.luxA.toFixed(0)} lx
-Espace pixélaire net : ${R.netResolution}
-Espace pixélaire brut : ${R.grossResolution}`;
-  document.getElementById('temp-results').style.display = 'block';
+  let opticInfo = R.optic ?
+    `<div>Optique utilisée : ${R.optic.name} (${R.optic.code})</div><div>Throw ratio plage : ${R.optic.min}–${R.optic.max}</div><div>Lens shift V : ${R.optic.vshift}</div><div>Lens shift H : ${R.optic.hshift}</div><div>Lumens après réduction : ${R.optic.lumens} lm</div>` :
+    `<div>Aucune optique trouvée pour ce throw ratio.</div>`;
+  let projInfo = R.projector ?
+    `<div>Projecteur : ${R.projector.name}</div><div>Lumens natif : ${R.projector.brightness ? R.projector.brightness + ' lm' : '—'}</div><div>Résolution : ${R.projector.resolution.w && R.projector.resolution.h ? R.projector.resolution.w + ' x ' + R.projector.resolution.h : '—'}</div><div>Ratio : ${R.projector.aspect || '—'}</div>` :
+    '';
+  let stackLabel = 'Single';
+  if (manStack === 2) stackLabel = 'Dual';
+  else if (manStack === 3) stackLabel = 'Trial';
+  else if (manStack === 4) stackLabel = 'Quadral';
+  else if (manStack > 4) stackLabel = manStack;
+  document.getElementById(resultId).innerHTML =
+    projInfo +
+    `<div>Orientation : ${R.orientation}</div>`+
+    `<div>Projecteurs : ${R.cols} × ${R.rows}</div>`+
+    `<div>Stack : ${stackLabel}</div>`+
+    `<div>Image p/proj : ${R.imgW.toFixed(2)} × ${R.imgH.toFixed(2)} m</div>`+
+    `<div>Pixel (mm) : ${R.pxSize.toFixed(2)}</div>`+
+    `<div>Throw ratio : ${getSingleThrowRatio().toFixed(2)} :1</div>`+
+    `<div>Lux max théorique : ${R.luxMaxTheorique.toFixed(0)} lx</div>`+
+    `<div>Lux réel (optique) : ${R.luxReel.toFixed(0)} lx</div>`+
+    `<div>Espace pixélaire net : ${R.netResolution}</div>`+
+    `<div>Espace pixélaire brut : ${R.grossResolution}</div>`+
+    opticInfo;
+  document.getElementById(resultId).style.display = 'block';
+
+  // Affichage de la barre de distance public (manuel)
+  const pxSize2 = R.pxSize;
+  const distMin2 = calcDistanceForPPD(pxSize2, 30, 40);
+  let maxDist2 = Math.max(20, Math.min(200, distMin2 * 3));
+  const bar2 = document.getElementById('public-distance-bar');
+  const barCanvas2 = document.getElementById('bar-pixel-public');
+  const barCursor2 = document.getElementById('bar-pixel-cursor');
+  const barText2 = document.getElementById('bar-pixel-text');
+  const barMaxLabel2 = document.getElementById('bar-pixel-max-label');
+  if (bar2 && barCanvas2 && barCursor2 && barText2 && barMaxLabel2) {
+    bar2.style.display = '';
+    // Gradient rouge→vert
+    const ctx2 = barCanvas2.getContext('2d');
+    const grad2 = ctx2.createLinearGradient(0,0,barCanvas2.width,0);
+    grad2.addColorStop(0, '#e53935');
+    grad2.addColorStop(0.5, '#ffeb3b');
+    grad2.addColorStop(1, '#43a047');
+    ctx2.clearRect(0,0,barCanvas2.width,barCanvas2.height);
+    ctx2.fillStyle = grad2;
+    ctx2.fillRect(0,0,barCanvas2.width,barCanvas2.height);
+    // Curseur noir
+    let pct2 = Math.max(0, Math.min(1, distMin2 / maxDist2));
+    const x2 = pct2 * barCanvas2.width;
+    barCursor2.style.left = (x2-7) + 'px';
+    barCursor2.style.top = '0px';
+    barCursor2.style.width = '0';
+    barCursor2.style.height = '0';
+    barCursor2.style.borderLeft = '7px solid transparent';
+    barCursor2.style.borderRight = '7px solid transparent';
+    barCursor2.style.borderBottom = '15px solid #111';
+    barCursor2.style.position = 'absolute';
+    barCursor2.style.display = 'block';
+    // Texte
+    barText2.textContent = `Distance optimale pour une image nette (≥30 PPD sur 40°) : ${distMin2.toFixed(2)} m`;
+    barMaxLabel2.textContent = maxDist2.toFixed(0) + ' m';
+  }
 }
 
 // Focal Range Visualization Script
@@ -597,24 +1057,141 @@ markerLine.id = 'marker-line';
 grad.appendChild(marker);
 grad.appendChild(markerLine);
 
-function updateFocalVisualization(throwRatio) {
+let autoThrow = null, manualThrow = null;
+function updateFocalVisualization(throwRatio, isManual = false) {
   const f = throwRatio;
-  if (isNaN(f) || f < minF || f > maxF) {
-    marker.style.display = 'none';
-    markerLine.style.display = 'none';
-    document.getElementById('result').textContent = "Aucune plage pour cette valeur.";
-    return;
+  const minF = 0.35;
+  const maxF = 7.41;
+  // On stocke la valeur pour chaque mode
+  if (isManual) {
+    manualThrow = f;
+  } else {
+    autoThrow = f;
   }
-  const pct = ((f - minF) / (maxF - minF)) * 100;
-  marker.style.left = `${pct}%`;
-  marker.style.display = 'block';
-  markerLine.style.left = `${pct}%`;
-  markerLine.style.display = 'block';
-
+  // On efface les anciens curseurs
+  const grad = document.getElementById('grad');
+  let markerAuto = document.getElementById('marker-auto');
+  let markerManual = document.getElementById('marker-manual');
+  let markerLineAuto = document.getElementById('marker-line-auto');
+  let markerLineManual = document.getElementById('marker-line-manual');
+  if (!markerAuto) {
+    markerAuto = document.createElement('div');
+    markerAuto.id = 'marker-auto';
+    markerAuto.style.position = 'absolute';
+    markerAuto.style.top = '-15px';
+    markerAuto.style.width = '0';
+    markerAuto.style.height = '0';
+    markerAuto.style.borderLeft = '7px solid transparent';
+    markerAuto.style.borderRight = '7px solid transparent';
+    markerAuto.style.borderBottom = '15px solid yellow';
+    markerAuto.style.display = 'none';
+    grad.appendChild(markerAuto);
+    markerLineAuto = document.createElement('div');
+    markerLineAuto.id = 'marker-line-auto';
+    markerLineAuto.style.position = 'absolute';
+    markerLineAuto.style.top = '-25px';
+    markerLineAuto.style.height = '2px';
+    markerLineAuto.style.backgroundColor = 'yellow';
+    markerLineAuto.style.display = 'none';
+    grad.appendChild(markerLineAuto);
+  }
+  if (!markerManual) {
+    markerManual = document.createElement('div');
+    markerManual.id = 'marker-manual';
+    markerManual.style.position = 'absolute';
+    markerManual.style.top = '-15px';
+    markerManual.style.width = '0';
+    markerManual.style.height = '0';
+    markerManual.style.borderLeft = '7px solid transparent';
+    markerManual.style.borderRight = '7px solid transparent';
+    markerManual.style.borderBottom = '15px solid red';
+    markerManual.style.display = 'none';
+    grad.appendChild(markerManual);
+    markerLineManual = document.createElement('div');
+    markerLineManual.id = 'marker-line-manual';
+    markerLineManual.style.position = 'absolute';
+    markerLineManual.style.top = '-25px';
+    markerLineManual.style.height = '2px';
+    markerLineManual.style.backgroundColor = 'red';
+    markerLineManual.style.display = 'none';
+    grad.appendChild(markerLineManual);
+  }
+  // Affichage des curseurs
+  // Curseur automatique (jaune)
+  if (autoThrow && !isNaN(autoThrow) && autoThrow >= minF && autoThrow <= maxF) {
+    const pct = ((autoThrow - minF) / (maxF - minF)) * 100;
+    markerAuto.style.left = `${pct}%`;
+    markerAuto.style.display = 'block';
+    markerLineAuto.style.left = `${pct}%`;
+    markerLineAuto.style.display = 'block';
+  } else {
+    markerAuto.style.display = 'none';
+    markerLineAuto.style.display = 'none';
+  }
+  // Curseur manuel (rouge)
+  if (manualThrow && !isNaN(manualThrow) && manualThrow >= minF && manualThrow <= maxF) {
+    const pct = ((manualThrow - minF) / (maxF - minF)) * 100;
+    markerManual.style.left = `${pct}%`;
+    markerManual.style.display = 'block';
+    markerLineManual.style.left = `${pct}%`;
+    markerLineManual.style.display = 'block';
+  } else {
+    markerManual.style.display = 'none';
+    markerLineManual.style.display = 'none';
+  }
+  // Affichage du texte de résultat
   const hit = rangesInput.filter(r => f >= r.min && f <= r.max).map(r => r.label);
   document.getElementById('result').textContent = hit.length
-    ? `Valeur ${f.toFixed(2)} dans les plages : ${hit.join(', ')}`
-    : `Aucune plage pour ${f.toFixed(2)}`;
+    ? `Valeur ${f && !isNaN(f) ? f.toFixed(2) : '-'} dans les plages : ${hit.join(', ')}`
+    : `Aucune plage pour ${f && !isNaN(f) ? f.toFixed(2) : '-'}`;
+}
+
+// === Début ajout : gestion du changement de projecteur ===
+function onProjectorChange() {
+  const val = document.getElementById('projectorProfile').value;
+  selectedProjector = PROJECTORS.find(p => p.id === val);
+  if (selectedProjector.id === 'ebpu2220b') {
+    document.getElementById('aspect').value = selectedProjector.aspect;
+    document.getElementById('aspect').disabled = true;
+    document.getElementById('resW').value = selectedProjector.resolution.w;
+    document.getElementById('resW').disabled = true;
+    document.getElementById('resH').value = selectedProjector.resolution.h;
+    document.getElementById('resH').disabled = true;
+    document.getElementById('lumens').value = selectedProjector.brightness;
+    document.getElementById('lumens').disabled = true;
+  } else {
+    document.getElementById('aspect').disabled = false;
+    document.getElementById('resW').disabled = false;
+    document.getElementById('resH').disabled = false;
+    document.getElementById('lumens').disabled = false;
+  }
+}
+window.addEventListener('DOMContentLoaded', onProjectorChange);
+// === Fin ajout ===
+
+function getSingleThrowRatio() {
+  const D = +document.getElementById('dist').value;
+  const BW = +document.getElementById('bldgW').value;
+  const cols = layout ? layout.cols : 1;
+  // Largeur d'image projetée par projecteur SANS overlap
+  const imgW = BW / cols;
+  return Math.floor((D / imgW) * 100) / 100;
+}
+
+// Ajout : fonction de calcul de la distance optimale pour un PPD donné
+/**
+ * Calcule la distance minimale optimale pour garantir une densité de pixels par degré (PPD) donnée.
+ * @param {number} pixel_size_mm - Taille d'un pixel projeté en millimètres (ex: 5 pour 5mm)
+ * @param {number} ppd_target - Densité visuelle minimale en pixels par degré (par défaut 30)
+ * @param {number} fov_deg - Champ de vision horizontal en degrés (par défaut 40)
+ * @returns {number} Distance optimale en mètres
+ */
+function calcDistanceForPPD(pixel_size_mm, ppd_target = 30, fov_deg = 40) {
+    const pixel_size_m = pixel_size_mm / 1000;
+    const width = pixel_size_m * ppd_target * fov_deg;
+    const fov_rad = fov_deg * Math.PI / 180;
+    const distance = width / (2 * Math.tan(fov_rad / 2));
+    return distance;
 }
 </script>
 
